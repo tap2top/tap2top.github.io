@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 <title>Document</title>
+<style>
+html,body{ margin: 0; padding: 0 }
+</style>
 </head>
 <body>
 <script>
@@ -235,6 +238,7 @@ class TeRender{
     const canvas = this.canvas = document.createElement('canvas')
     canvas.width = 320
     canvas.height = 320
+    canvas.style.cssText = 'width: 100vw; height: auto;'
     document.body.appendChild(canvas)
     this.ctx = canvas.getContext('2d')
     document.addEventListener('keypress', this)
