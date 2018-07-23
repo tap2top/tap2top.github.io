@@ -81,7 +81,7 @@ class Te{
     this.blocks = []
     this.holder = null
     this.b()
-    let _x = 0, _y = 0
+    let _x = 0, _y = 0, _score = 0
 
     const
       left_border = values => 0 - Math.min(values[0] % 10, values[1] % 10, values[2] % 10, values[3] % 10),
@@ -100,8 +100,9 @@ class Te{
       block: {
         get: () => this.blocks[0]
       },
+      score: { get(){ return _score } },
       x: {
-        get: () => _x,
+        get(){ return _x },
         set: v => {
           if(!isNaN(v)){
             const { values } = this.block
@@ -113,7 +114,7 @@ class Te{
         }
       },
       y: {
-        get: () => _y,
+        get(){ return _y },
         set: v => {
           if(!isNaN(v) && v >= 0 && v <= 20){
             _y = v
@@ -129,13 +130,15 @@ class Te{
     }
     const ping = () => {
       const { buffer } = this
-      let bottom = 23
+      let bottom = 23, count = 0
       while(bottom >= 0){
         let pong = 1
         for(let i = 0; i < 10; i ++){
           pong &= buffer[i + bottom * 10]
         }
         if(pong){
+          _score += 1 << count
+          count ++
           let tail = bottom * 10 + 9
           while(tail > 9){
             buffer[tail] = buffer[tail - 10]
@@ -150,6 +153,10 @@ class Te{
           bottom --
         }
       }
+      buffer[0xfc] = _score >> 24 & 0xff
+      buffer[0xfd] = _score >> 16 & 0xff
+      buffer[0xfe] = _score >> 8 & 0xff
+      buffer[0xff] = _score & 0xff
       this.b()
     }
     
@@ -214,7 +221,7 @@ class Te{
     }
   }
   b(){
-    while(this.blocks.length < 4){
+    while(this.blocks.length < 6){
       this.blocks.push(new Bo)
     }
     this.x = 0
@@ -226,7 +233,6 @@ class TeRender{
   constructor(){
     this.t = new Te
     const canvas = this.canvas = document.createElement('canvas')
-    canvas.style.border = '1px solid red'
     canvas.width = 320
     canvas.height = 320
     document.body.appendChild(canvas)
@@ -234,13 +240,16 @@ class TeRender{
     document.addEventListener('keypress', this)
 
     this.render = this.render.bind(this)
-    this._rafTimer = null
+    this.rafTimer = null
   }
   handleEvent(e){
     const { t } = this
     switch(e.keyCode){
       case 97: return t.left()
-      case 115: return t.down()
+      case 115:
+        clearInterval(this.timer)
+        this.timer = setInterval(() => this.t.down(), 1000)
+        return t.down()
       case 100: return t.right()
       case 113: return t.ccw()
       case 101:
@@ -249,6 +258,7 @@ class TeRender{
   }
   start(){
     this.render()
+    this.timer = setInterval(() => this.t.down(), 1000)
   }
   pause(){
 
@@ -263,27 +273,42 @@ class TeRender{
   renderBlock(x, y, color){
     const { ctx } = this
     ctx.fillStyle = color
-    ctx.fillRect(x * 10 + 10, y * 10 + 10, 10, 10)
+    ctx.fillRect(x * 10 + 110, y * 10 + 10, 10, 10)
   }
   renderBG(){
     const { ctx } = this
     ctx.fillStyle = '#ccc'
-    ctx.fillRect(10, 10, 100, 240)
+    ctx.fillRect(110, 10, 100, 240)
+  }
+  renderScore(){
+    const { t, ctx } = this
+    const { buffer } = t
+    const score = buffer[0xfc] << 3 |
+      buffer[0xfd] << 2 |
+      buffer[0xfe] << 1 |
+      buffer[0xff]
+    
+    ctx.font = '14px monospace'
+    ctx.fillStyle = '#000'
+    ctx.fillText(score, 200, 300)
   }
   renderQueueBlocks(){
     const { ctx, t } = this
-    t.blocks.forEach((block, i) => {
-      for(var j = 0; j < block.values.length; j ++){
-        this.renderBlock(idx % 10, idx / 10 | 0, color)
-      }
-    })
-      const { block, x, y } = t
+    for(var i = 1; i < t.blocks.length; i ++) {
+      const block = t.blocks[i]
       const color = colors[(block.data >> 1) & 7]
-
+      for(var j = 0; j < block.values.length; j ++){
+        const idx = block.values[j]
+        this.renderBlock(idx % 10 + 10, (idx / 10 | 0) + (i - 1) * 5, color)
+      }
+    }
   }
   render(){
     this.clear()
     this.renderBG()
+    this.renderQueueBlocks()
+    this.renderScore()
+
     const { ctx, t } = this
     const { buffer, gameover } = t
 
@@ -293,15 +318,15 @@ class TeRender{
         this.renderBlock(i % 10, i / 10 | 0, colors[((b >> 1) & 7) + 8])
       }
     }
-    if(!gameover){
+    // if(!gameover){
       const { block, x, y } = t
       const color = colors[(block.data >> 1) & 7]
       for(var i = 0; i < block.values.length; i ++){
         const idx = (block.values[i] + x + y * 10)
         this.renderBlock(idx % 10, idx / 10 | 0, color)
       }
-    }
-    this.timer = requestAnimationFrame(this.render)
+    // }
+    this.rafTimer = requestAnimationFrame(this.render)
   }
 }
 
