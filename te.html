@@ -26,6 +26,19 @@ const colors = [
   'rgba(222,128,44,.7)',
   '#888'
 ]
+colors.forEach((c, i) => {
+  const cvs = document.createElement('canvas')
+  cvs.width = cvs.height = 10
+  const ctx = cvs.getContext('2d')
+  ctx.fillStyle = '#999'
+  ctx.fillRect(0, 0, 9, 9)
+  const grad = ctx.createLinearGradient(0, 0, 10, 10)
+  grad.addColorStop(0, 'white')
+  grad.addColorStop(1, colors[i])
+  ctx.fillStyle = grad
+  ctx.fillRect(1, 1, 7, 7)
+  colors[i] = ctx.createPattern(cvs, 'repeat')
+})
 const set = [
   { data: 0 << 1 | 1, b: [ [ 33, 34, 35, 36 ], [ 04, 14, 24, 34 ] ] },
   { data: 1 << 1 | 1, b: [ [ 24, 25, 34, 35 ] ] },
@@ -65,6 +78,8 @@ class Bo{
 class Te{
   constructor(){
     this.buffer = new Uint8ClampedArray(1 << 8)
+    this.blocks = []
+    this.holder = null
     this.b()
     let _x = 0, _y = 0
 
@@ -82,13 +97,16 @@ class Te{
           return !!over
         }
       },
+      block: {
+        get: () => this.blocks[0]
+      },
       x: {
         get: () => _x,
         set: v => {
-          const { values } = this.block
           if(!isNaN(v)){
-            const left = left_border(this.block.values),
-              right = right_border(this.block.values)
+            const { values } = this.block
+            const left = left_border(values),
+              right = right_border(values)
             
             _x = Math.max(left, Math.min(right, v))
           }
@@ -105,9 +123,9 @@ class Te{
     })
 
     const check = (x, y) => {
-      const { buffer } = this
+      const { buffer, block } = this
       const c = x + y * 10
-      return this.block.values.some(i => buffer[i + c] & 1)
+      return block.values.some(i => buffer[i + c] & 1)
     }
     const ping = () => {
       const { buffer } = this
@@ -132,9 +150,7 @@ class Te{
           bottom --
         }
       }
-      if(!this.gameover){
-        this.b()
-      }
+      this.b()
     }
     
     this.left = () => {
@@ -154,95 +170,144 @@ class Te{
       return ox !== this.x
     }
     this.down = () => {
-      const { buffer, x, y, block } = this
-      if(y === 20 || check(x, y + 1)){
-        for(var i = 0; i < block.values.length; i ++){
-          buffer[block.values[i] + x + y * 10] = block.data
+      if(!this.gameover){
+        const { buffer, x, y, block } = this
+        if(y === 20 || check(x, y + 1)){
+          for(var i = 0; i < block.values.length; i ++){
+            buffer[block.values[i] + x + y * 10] = block.data
+          }
+          this.blocks.shift()
+          ping()
         }
-        ping()
-      }
-      else{
-        this.y += 1
+        else{
+          this.y += 1
+        }
       }
     }
     this.cw = () => {
-      const ox = this.x
-      this.block.cw()
-      this.x = this.x
+      const { x, block } = this
+      block.cw()
+      this.x = x
 
       if(check(this.x, this.y)){
         if(this.left()){ return true }
         if(this.right()){ return true }
-        this.block.ccw()
-        this.x = ox
+        block.ccw()
+        this.x = x
         return false
       }
       return true
     }
     this.ccw = () => {
-      const ox = this.x
-      this.block.ccw()
-      this.x = this.x
+      const { x, block } = this
+      block.ccw()
+      this.x = x
 
       if(check(this.x, this.y)){
         if(this.left()){ return true }
         if(this.right()){ return true }
-        this.block.cw()
-        this.x = ox
+        block.cw()
+        this.x = x
         return false
       }
       return true
     }
   }
   b(){
-    this.block = new Bo
+    while(this.blocks.length < 4){
+      this.blocks.push(new Bo)
+    }
     this.x = 0
     this.y = 0
   }
 }
 
-const canvas = document.createElement('canvas'),
-  ctx = canvas.getContext('2d')
+class TeRender{
+  constructor(){
+    this.t = new Te
+    const canvas = this.canvas = document.createElement('canvas')
+    canvas.style.border = '1px solid red'
+    canvas.width = 320
+    canvas.height = 320
+    document.body.appendChild(canvas)
+    this.ctx = canvas.getContext('2d')
+    document.addEventListener('keypress', this)
 
-canvas.style.border = '1px solid red'
-canvas.width = 100
-canvas.height = 240
-document.body.appendChild(canvas)
-
-const t = new Te
-
-const render = () => {
-  const { buffer } = t
-  ctx.clearRect(0, 0, 100, 240)
-
-  for(let i = 0; i < 240; i ++){
-    const b = buffer[i]
-    if(b & 1){
-      ctx.fillStyle = colors[((b >> 1) & 7) + 8]
-      ctx.fillRect((i % 10) * 10, (i / 10 | 0) * 10, 9, 9)
+    this.render = this.render.bind(this)
+    this._rafTimer = null
+  }
+  handleEvent(e){
+    const { t } = this
+    switch(e.keyCode){
+      case 97: return t.left()
+      case 115: return t.down()
+      case 100: return t.right()
+      case 113: return t.ccw()
+      case 101:
+      case 119: return t.cw()
     }
   }
-  const { block, x, y } = t
-  ctx.fillStyle = colors[(block.data >> 1) & 7]
-  for(var i = 0; i < block.values.length; i ++){
-    const idx = (block.values[i] + x + y * 10)
-    ctx.fillRect((idx % 10) * 10, (idx / 10 | 0) * 10, 9, 9)
+  start(){
+    this.render()
   }
-  requestAnimationFrame(render)
-}
-setInterval(() => t.down(), 1000)
+  pause(){
 
-render()
-window.addEventListener('keypress', e => {
-  switch(e.keyCode){
-    case 97: return t.left()
-    case 115: return t.down()
-    case 100: return t.right()
-    case 113: return t.ccw()
-    case 101:
-    case 119: return t.cw()
   }
-})
+  resume(){
+
+  }
+  clear(){
+    const { ctx } = this
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  }
+  renderBlock(x, y, color){
+    const { ctx } = this
+    ctx.fillStyle = color
+    ctx.fillRect(x * 10 + 10, y * 10 + 10, 10, 10)
+  }
+  renderBG(){
+    const { ctx } = this
+    ctx.fillStyle = '#ccc'
+    ctx.fillRect(10, 10, 100, 240)
+  }
+  renderQueueBlocks(){
+    const { ctx, t } = this
+    t.blocks.forEach((block, i) => {
+      for(var j = 0; j < block.values.length; j ++){
+        this.renderBlock(idx % 10, idx / 10 | 0, color)
+      }
+    })
+      const { block, x, y } = t
+      const color = colors[(block.data >> 1) & 7]
+
+  }
+  render(){
+    this.clear()
+    this.renderBG()
+    const { ctx, t } = this
+    const { buffer, gameover } = t
+
+    for(let i = 40; i < 240; i ++){
+      const b = buffer[i]
+      if(b & 1){
+        this.renderBlock(i % 10, i / 10 | 0, colors[((b >> 1) & 7) + 8])
+      }
+    }
+    if(!gameover){
+      const { block, x, y } = t
+      const color = colors[(block.data >> 1) & 7]
+      for(var i = 0; i < block.values.length; i ++){
+        const idx = (block.values[i] + x + y * 10)
+        this.renderBlock(idx % 10, idx / 10 | 0, color)
+      }
+    }
+    this.timer = requestAnimationFrame(this.render)
+  }
+}
+
+const game = new TeRender
+game.start()
+
 </script>
 </body>
 </html>
