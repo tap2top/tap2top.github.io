@@ -337,9 +337,9 @@ class TeRender{
     this._oy = pageY
     this.allowControl = true
     document.documentElement.style.touchAction = 'none'
-    document.addEventListener('touchmove', this, true)
-    document.addEventListener('touchend', this, true)
-    document.addEventListener('touchcancel', this, true)
+    document.addEventListener('touchmove', this, { passive: false })
+    document.addEventListener('touchend', this, { passive: false })
+    document.addEventListener('touchcancel', this, { passive: false })
   }
   touchmoveHandleEvent(e){
     if(this.allowControl){
@@ -385,9 +385,9 @@ class TeRender{
   touchendHandleEvent(e){
     this.allowControl = false
     document.documentElement.style.touchAction = ''
-    document.removeEventListener('touchmove', this, true)
-    document.removeEventListener('touchend', this, true)
-    document.removeEventListener('touchcancel', this, true)
+    document.removeEventListener('touchmove', this, { passive: false })
+    document.removeEventListener('touchend', this, { passive: false })
+    document.removeEventListener('touchcancel', this, { passive: false })
   }
   handleEvent(e){
     switch(e.type){
