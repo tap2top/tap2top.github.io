@@ -8,67 +8,197 @@
 </head>
 <body>
 <script>
-const set = [
-  [ [ 30, 31, 32, 33 ], [ 01, 11, 21, 31 ], [ 02, 12, 22, 32 ], [ 10, 11, 12, 13 ] ],
-  [ [ 21, 22, 31, 32 ], [ 21, 22, 31, 32 ], [ 21, 22, 31, 32 ], [ 21, 22, 31, 32 ] ],
-  [ [ 21, 31, 32, 33 ], [ 12, 22, 31, 32 ], [ 10, 11, 12, 22 ], [ 20, 21, 22, 32 ] ]
+const colors = [
+  'rgba(244,14,14,1)',
+  'rgba(14,244,14,1)',
+  'rgba(14,14,244,1)',
+  'rgba(244,14,244,1)',
+  'rgba(14,244,244,1)',
+  'rgba(244,244,14,1)',
+  'rgba(222,128,44,1)',
+  '#000',
+  'rgba(244,14,14,.7)',
+  'rgba(14,244,14,.7)',
+  'rgba(14,14,244,.7)',
+  'rgba(244,14,244,.7)',
+  'rgba(14,244,244,.7)',
+  'rgba(244,244,14,.7)',
+  'rgba(222,128,44,.7)',
+  '#888'
 ]
+const set = [
+  { data: 0 << 1 | 1, b: [ [ 33, 34, 35, 36 ], [ 04, 14, 24, 34 ] ] },
+  { data: 1 << 1 | 1, b: [ [ 24, 25, 34, 35 ] ] },
+  { data: 2 << 1 | 1, b: [ [ 26, 34, 35, 36 ], [ 14, 24, 34, 35 ], [ 34, 24, 25, 26 ], [ 15, 25, 35, 14 ] ] },
+  { data: 3 << 1 | 1, b: [ [ 24, 34, 35, 36 ], [ 14, 24, 34, 15 ], [ 36, 24, 25, 26 ], [ 15, 25, 35, 34 ] ] },
+  { data: 4 << 1 | 1, b: [ [ 25, 34, 35, 36 ], [ 25, 24, 14, 34 ], [ 35, 24, 25, 26 ], [ 24, 25, 15, 35 ] ] },
+  { data: 5 << 1 | 1, b: [ [ 23, 24, 34, 35 ], [ 15, 24, 34, 25 ] ] },
+  { data: 6 << 1 | 1, b: [ [ 25, 26, 34, 35 ], [ 14, 24, 25, 35 ] ] },
+]
+class Bo{
+  constructor(){
+    this.values = []
+
+    const block = set[set.length * Math.random() | 0]
+    let orientation = block.b.length * Math.random() | 0
+    const setData = () => {
+      const b = block.b[orientation]
+      for(var i = 0; i < b.length; i ++){
+        this.values[i] = b[i]
+      }
+    }
+    Object.defineProperties(this, {
+      orientation: { get: () => orientation }
+    })
+    setData()
+    this.data = block.data
+    this.cw = () => {
+      orientation = (orientation + 1) % block.b.length
+      setData()
+    }
+    this.ccw = () => {
+      orientation = (orientation - 1 + block.b.length) % block.b.length
+      setData()
+    }
+  }
+}
 class Te{
   constructor(){
-    this.buffer = new Uint8ClampedArray(1<<8)
-    this.block = Array(4).fill(-1)
-    this.blockType = 0
-  }
-  b(){
-    const _b = set[1 * Math.random() | 0][0]
-    for(let i = 0; i < this.block.length; i ++){
-      this.block[i] = _b[i] + 8
-    }
-    this.__ = 0x0f
-    // this.b0 = 47
-    // this.b1 = 48
-    // this.b2 = 49
-    // this.b3 = 50
-  }
-  c(){
-    const { buffer } = this
+    this.buffer = new Uint8ClampedArray(1 << 8)
+    this.b()
+    let _x = 0, _y = 0
+
+    const
+      left_border = values => 0 - Math.min(values[0] % 10, values[1] % 10, values[2] % 10, values[3] % 10),
+      right_border = values => 9 - Math.max(values[0] % 10, values[1] % 10, values[2] % 10, values[3] % 10)
     
-    let offset = 0xff
-    while(offset > 54){
-      let ding = 0x1
-      for(let i = 0; i < 10; i ++){
-        ding &= buffer[offset - 1 - i]
+    Object.defineProperties(this, {
+      gameover: {
+        get(){
+          let over = 0
+          for(let i = 0; i < 10; i ++){
+            over |= this.buffer[i + 30]
+          }
+          return !!over
+        }
+      },
+      x: {
+        get: () => _x,
+        set: v => {
+          const { values } = this.block
+          if(!isNaN(v)){
+            const left = left_border(this.block.values),
+              right = right_border(this.block.values)
+            
+            _x = Math.max(left, Math.min(right, v))
+          }
+        }
+      },
+      y: {
+        get: () => _y,
+        set: v => {
+          if(!isNaN(v) && v >= 0 && v <= 20){
+            _y = v
+          }
+        }
       }
-      if(ding){
-        let cur = offset
-        while(cur > 64){
-          buffer[cur] = buffer[cur - 10]
-          cur --
+    })
+
+    const check = (x, y) => {
+      const { buffer } = this
+      const c = x + y * 10
+      return this.block.values.some(i => buffer[i + c] & 1)
+    }
+    const ping = () => {
+      const { buffer } = this
+      let bottom = 23
+      while(bottom >= 0){
+        let pong = 1
+        for(let i = 0; i < 10; i ++){
+          pong &= buffer[i + bottom * 10]
         }
-        while(cur > 54){
-          buffer[cur] = 0x0
-          cur --
+        if(pong){
+          let tail = bottom * 10 + 9
+          while(tail > 9){
+            buffer[tail] = buffer[tail - 10]
+            tail --
+          }
+          while(tail > -1){
+            buffer[tail] = 0
+            tail --
+          }
         }
+        else{
+          bottom --
+        }
+      }
+      if(!this.gameover){
+        this.b()
+      }
+    }
+    
+    this.left = () => {
+      const ox = this.x
+      this.x -= 1
+      if(check(this.x, this.y)){
+        this.x = ox
+      }
+      return ox !== this.x
+    }
+    this.right = () => {
+      const ox = this.x
+      this.x += 1
+      if(check(this.x, this.y)){
+        this.x = ox
+      }
+      return ox !== this.x
+    }
+    this.down = () => {
+      const { buffer, x, y, block } = this
+      if(y === 20 || check(x, y + 1)){
+        for(var i = 0; i < block.values.length; i ++){
+          buffer[block.values[i] + x + y * 10] = block.data
+        }
+        ping()
       }
       else{
-        offset -= 10
+        this.y += 1
       }
     }
-  }
-  d(){
-    const { buffer } = this
-    if(this.block.some(b => b < 0x00) || this.block.some(b => b > 0xff)){
-      this.b()
+    this.cw = () => {
+      const ox = this.x
+      this.block.cw()
+      this.x = this.x
+
+      if(check(this.x, this.y)){
+        if(this.left()){ return true }
+        if(this.right()){ return true }
+        this.block.ccw()
+        this.x = ox
+        return false
+      }
+      return true
     }
-    for(let i = 0; i < this.block.length; i ++){
-      buffer[this.block[i] + 10] = this.__
-      buffer[this.block[i]] = 0
-      this.block[i] += 10
+    this.ccw = () => {
+      const ox = this.x
+      this.block.ccw()
+      this.x = this.x
+
+      if(check(this.x, this.y)){
+        if(this.left()){ return true }
+        if(this.right()){ return true }
+        this.block.cw()
+        this.x = ox
+        return false
+      }
+      return true
     }
-    this.c()
   }
-  l(){ }
-  r(){ }
+  b(){
+    this.block = new Bo
+    this.x = 0
+    this.y = 0
+  }
 }
 
 const canvas = document.createElement('canvas'),
@@ -79,30 +209,40 @@ canvas.width = 100
 canvas.height = 240
 document.body.appendChild(canvas)
 
-const colors = ['red', 'blue', 'green', '#398', 'red', 'blue', 'green', '#398', 'red', 'blue', 'green', '#398']
-
 const t = new Te
 
 const render = () => {
   const { buffer } = t
   ctx.clearRect(0, 0, 100, 240)
 
-  let offset = 0
-  while(offset < 240){
-    const b = buffer[offset + 15]
+  for(let i = 0; i < 240; i ++){
+    const b = buffer[i]
     if(b & 1){
-      ctx.fillStyle = colors[b & 15 >> 1]
-      // console.log(offset + 55)
-      ctx.fillRect((offset % 10) * 10, (offset / 10 | 0) * 10, 9, 9)
+      ctx.fillStyle = colors[((b >> 1) & 7) + 8]
+      ctx.fillRect((i % 10) * 10, (i / 10 | 0) * 10, 9, 9)
     }
-    offset ++
   }
-  document.title = t.b0
+  const { block, x, y } = t
+  ctx.fillStyle = colors[(block.data >> 1) & 7]
+  for(var i = 0; i < block.values.length; i ++){
+    const idx = (block.values[i] + x + y * 10)
+    ctx.fillRect((idx % 10) * 10, (idx / 10 | 0) * 10, 9, 9)
+  }
   requestAnimationFrame(render)
 }
-setInterval(() => t.d(), 1000)
+setInterval(() => t.down(), 1000)
 
 render()
+window.addEventListener('keypress', e => {
+  switch(e.keyCode){
+    case 97: return t.left()
+    case 115: return t.down()
+    case 100: return t.right()
+    case 113: return t.ccw()
+    case 101:
+    case 119: return t.cw()
+  }
+})
 </script>
 </body>
 </html>
