@@ -1,5 +1,6 @@
 title: TAP2.TOP
-description: 测试网站
+description: tap2.top website
 show_downloads: false
 TZ: Asia/Shanghai
-theme: jekyll-theme-midnight
+plugins:
+  - jekyll-pug
