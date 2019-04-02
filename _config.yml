@@ -1,6 +1,0 @@
-title: TAP2.TOP
-description: tap2.top website
-show_downloads: false
-TZ: Asia/Shanghai
-plugins:
-  - jekyll-pug
