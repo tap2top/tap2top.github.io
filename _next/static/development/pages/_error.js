@@ -2167,7 +2167,7 @@ function (_Component) {
           lineNumber: 5
         },
         __self: this
-      }, "BlackHole.");
+      }, "\u4F60\u6389\u8FDB\u4E86\u4E00\u4E2A\u9ED1\u6D1E *.*");
     }
   }]);
 
